@@ -1,0 +1,743 @@
+---
+title: "The Iconic Data Scientist Test Solution"
+author: "Sajjad Syed"
+date: "`r Sys.Date()`"
+output: 
+html_document:
+keep_md: true
+---
+
+#Data Scientist Task
+Task description and data for candidates applying to be a Data Scientist in the Data Science and Analytics Department at The Iconic.
+
+##Background
+Many of our customers at THE ICONIC - similar to most online shoppers - only provide the bare minimum of information needed when signing up as a new user or making a transaction on the site (i.e credit card details, delivery address etc). They do not provide their age, gender or any other personal details when they register as a new customer or they will simply purchase their items as a Guest user.
+
+Respecting customer privacy is of the utmost important at THE ICONIC and we understand why some shoppers are hesitant to provide personal information. However, to be able to better tailor our site, branding strategy, marketing, product and most importantly merchandising, we need to have a better handle on the profile of our shopper and understand the things that are more relevant to them.
+
+**What we have identified here is an opportunity to infer customers gender based on the amazingly rich user behavioural data, which will allow us to better tailor our site and offerings to their needs.**
+
+This way, the customer will be able to control their privacy and while still allowing us to tailor our offerings more suitably to our customer's needs.
+
+There are two main ways to gauge customer behaviour:
+
+**Purchase Behaviour**: Identify what they purchase, how do they purchase it, frequency, what price points, what discount types resonate etc.
+**Visit Behaviour**: This includes behaviour on site, the way shoppers browse, the types of interactions respond to etc.
+Here are a host of such features that can be engineered, but for now, this should suffice. Using the dataset given, can you predict an "inferred" gender for our customers?
+
+
+##Task
+There are four stages to this task:
+
+**Stage 1 **: SQL - A lot of our data lives in SQL databases, data scientists need to be comfortable using SQL.
+
+Unhash the sqlite database (test_data.db.zip) using the secret key provided by us, extract it.
+
+Write SQL queries to answer the following questions:
+
+Note: At this stage it is ok to ignore the underlying errors in the data
+
+What was the total revenue to the nearest dollar for customers who have paid by credit card?
+What percentage of customers who have purchased female items have paid by credit card?
+What was the average revenue for customers who used either iOS, Android or Desktop?
+We want to run an email campaign promoting a new mens luxury brand. Can you provide a list of customers we should send to?
+**Stage 2 **: CLEAN - Unhash the data (test_data.zip) using the secret key provided by us, extract it, most importantly clean it and put it in a form you can use - all programatically of course. We have also "intentionally" corrupted two columns in this file - two columns that might look correct but are not correct. They need "some correction" to be useful.
+
+**Stage 3 **: BUILD - Build a deep learning model (preferably) or any other model that suitably answers this question and predict the inferred gender using the features provided and deriving more featueres at your end. Remember, there is no gender flag, so you are flying blind here.
+
+**Stage 4** : DELIVER - Package all your process, findings and code into a reproducible document that can be understood by a business user. A repo of the code branch would be a great thing to have! This reproducible report* must answer the following questions:
+
+How did you clean the data and what was wrong with it? Close to 90% of a Data Scientist's job is in cleaning data
+What are the features you used as-is and which one did you engineer using the given ones? What do they mean in the real world?
+What does the output look like - how close is the accuracy of the prediction in light of data with labelled flags?
+What other features and variables can you think of, that can make this process more robust? Can you make a recommendation of top 5 features you'd seek to find apart from the ones given here
+Summarize your findings in an executive summary
+
+
+##Solution
+
+###Stage 1:
+
+At this stage, my first task was to import the SQLITE database **test_data.db.zip** provided and run the queries to answer four business questions.  First I unpacked the password i.e;unserialized lowercase SHA-256 hash using the keyword provided.
+
+
+To run the **test_data.db**, I installed and loaded the package named **RSQLite**.
+Depending on your system, you may or may not have it. If you don't have it you can
+install and load using the following script 
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#install.packages("RSQLite") #perhaps needed
+
+library("RSQLite")
+```
+
+After installing the package,we will import the file using the following script
+
+```{r}
+# connect to the sqlite database file
+#I am using my system file path you can replace it with filepath in your system
+filename<-"C:/Users/syeds/Documents/My Docs/Iconic Job/datascientist-master/datascientist-master/test_data.db/test_data.db"
+
+#/Users/sajjad/Documents/Iconic Test/datascientist-master/test_data.db   Mac filepath
+#C:/Users/syeds/Documents/My Docs/Iconic Job/datascientist-master/datascientist-master/test_data.db/test_data.db  windows filepath
+
+
+#store the driver in sqlite
+sqlite    <- dbDriver("SQLite")
+
+#import the database in the Iconic_Database_Test
+Iconic_Database_Test <- dbConnect(sqlite,dbname=filename)
+```
+
+Checking the Data in the Iconic_Database_Test
+```{r}
+#Getting the List of Tables in the Database
+dbListTables(Iconic_Database_Test)
+
+#Getting the List of all the Columns in the CUstomers Table
+dbListFields(Iconic_Database_Test,"customers")
+```
+
+*Question 1*: What was the total revenue to the nearest dollar for customers who have paid by credit card?
+```{r}
+#The Query and Output 
+dbGetQuery(Iconic_Database_Test,'SELECT  SUM(revenue) as Revenue 
+                                 FROM customers 
+                                 WHERE cc_payments<>0'
+           )
+
+```
+
+
+
+*Question 2*: What percentage of customers who have purchased female items have paid by credit card?
+
+
+```{r}
+
+#The Query and Output 
+dbGetQuery(Iconic_Database_Test,'SELECT  Round (AVG(CASE WHEN cc_payments=1 THEN 1 ELSE 0 END ) *100,2)
+                                        as Percentage_Of_Credit_Card_Payments 
+                                FROM customers 
+                                WHERE female_items<>0'
+           )
+```
+
+
+*Question 3*: What was the average revenue for customers who used either iOS, Android or Desktop?
+```{r}
+
+#The Query and Output 
+dbGetQuery(Iconic_Database_Test,'SELECT  round(avg(revenue),2) as Average_Revenue
+                                 FROM customers 
+                                 WHERE (desktop_orders<>0 OR ios_orders <>0 OR android_orders <>0)'
+           )
+```
+
+
+*Question 4*: We want to run an email campaign promoting a new mens luxury brand. Can you provide a list of customers we should send to?
+```{r results='hide'}
+
+#The Query and I have hidden the result because it will take too much space in the Markdown File
+ 
+Output<-dbGetQuery(Iconic_Database_Test,'SELECT   distinct customer_id 
+                                 FROM  customers 
+                                 WHERE male_items <>0 or unisex_items <> 0'
+           )
+
+# This is the list of customers
+Output
+
+#The Selection Criteria here is subjective. My assumption is both Men and Unisex customer can be targeted.
+#We can target female customers if we are running the campaign during the valentines day. There is good chance of them 
+#looking for a gift as well.Furthermore, we can go on and filter the data for just customers having price per  male item high 
+```
+
+
+###Stage 2:
+
+CLEAN - Unhash the data (test_data.zip) using the secret key provided by us, extract it, most importantly clean it and put it in a form you can use - all programatically of course. We have also "intentionally" corrupted two columns in this file - two columns that might look correct but are not correct. They need "some correction" to be useful.
+
+
+Before starting the Cleaning Process, I will install and load all the packages that i will be using throughout the model development.
+
+```{r results='hide' ,warning=FALSE, message=FALSE}
+
+
+# Install package function: it will installs and load multiple R packages.
+# Install the package if they are not istalled, then load them into the R session.
+r = getOption("repos")
+r["CRAN"] = "http://cran.us.r-project.org"
+options(repos = r)
+
+Install_Packages <- function(package){
+  new.package <- package[!(package %in% installed.packages()[, "Package"])]
+  if (length(new.package)) 
+    install.packages(new.package,dependencies = TRUE)
+  sapply(package, require, character.only = TRUE)
+}
+
+
+packages <- c("readr", "jsonlite", "ggplot2", "dplyr", "tidyverse", "cluster","factoextra","gridExtra","corrplot","randomForestExplainer")
+Install_Packages(packages)
+
+
+install.packages("devtools")
+library(devtools)
+devtools::install_github('araastat/reprtree')
+library(reprtree)
+
+
+
+#library(readr)      
+#library(jsonlite)   # for reading json file
+#library(ggplot2)    # plotting the data
+#library(dplyr)      # data manipulation
+#library(tidyverse)  # data manipulation
+#library(cluster)    # clustering algorithms
+#library(factoextra) # clustering algorithms & visualization
+#library(gridExtra)  # displaying multiple k value clusters at once
+#library(corrplot)
+```
+
+
+Now we will import the Json file provided for data analysis and inspect it and try to find the issues  if any in our data
+```{r warning=FALSE, message=FALSE}
+Iconic_Test_Data<-fromJSON("C:/Users/syeds/Documents/My Docs/Iconic Job/datascientist-master/datascientist-master/test_data/data.json")
+
+#/Users/sajjad/Documents/Iconic Test/datascientist-master/data.json  Mac filepath
+
+#C:/Users/syeds/Documents/My Docs/Iconic Job/datascientist-master/datascientist-master/test_data/data.json windows file path
+
+#convert the data into dataframe 
+
+Iconic_Test_Data = data.frame(Iconic_Test_Data)
+
+#check the data summary statistics  
+
+summary(Iconic_Test_Data)
+
+#Check the first few rows of data
+head(Iconic_Test_Data)
+```
+
+From summary, We can see that the summary statistics of **days_since_first_order** are less than **days_since_last_order**.This can't be true. The  **days_since_first_order** can either be greater or equal to **days_since_last_order** ( The situation where the customer just bought once and never returned). 
+
+Having identified the issue with these two columns, We will go further and investigate the extent of the data corruption 
+in these two columns.
+
+```{r warning=FALSE, message=FALSE}
+
+#Number of corrupt records  in the data 
+corrupt_records <- filter(Iconic_Test_Data,days_since_first_order< days_since_last_order) %>% count()
+
+corrupt_records
+#Percentage of corrupt recordsin the data 
+percetange_corrupt_records  <-round(corrupt_records/count(Iconic_Test_Data) *100,2)
+
+percetange_corrupt_records
+
+
+
+
+```
+
+
+Upon looking at summary and view the data,We can easily infer that most of the noise is introudced by multiplying the **days_since_first_order** with 24 and storing the outcome **days_since_last_order** 
+
+
+
+```{r results='hide' , warning=FALSE, message=FALSE}
+
+#Filtering the Corrupt Records and storing it in the corrupt_records_values
+corrupt_records_values <- filter(Iconic_Test_Data,days_since_first_order< days_since_last_order)
+
+
+#Adding a new coulmn after dividing  it with 24
+corrupt_records_values<-mutate (corrupt_records_values, multiple=corrupt_records_values$days_since_last_order/24)
+
+#filtering the days_since_first_order,days_since_last_order,multiple columns and storing them back into the corrupt_records_values and overwritting the existing dataframe
+
+corrupt_records_values<-corrupt_records_values%>%select(days_since_first_order,days_since_last_order,multiple)
+
+#viewing the data
+corrupt_records_values
+
+```
+
+
+Now lets get the data in which The number of days since first order are  greater or equal to days since last order  
+
+```{r}
+
+Iconic_Test_Data_Clean <- filter(Iconic_Test_Data,days_since_first_order >= days_since_last_order)
+
+#Orders must be more than or equal to the cancellations.. removing any order cancellation anomalies
+Iconic_Test_Data_Clean <- filter(Iconic_Test_Data_Clean,cancels <= orders)
+
+
+```
+
+
+Now we will determine the correlation between different data variables 
+```{r warning=FALSE, message=FALSE}
+
+#filtering the numeric only values for doing th correlation analysis
+Iconic_Test_Data_Clean_Numeric_1<-Iconic_Test_Data_Clean%>%keep(is.numeric)
+
+#casting the Correlation Matrix for the data 
+Data_Correlation_Matrix<-cor(as.matrix(Iconic_Test_Data_Clean_Numeric_1))
+
+```
+
+Now lets Plot the correlation matrix to find correlation in the data 
+
+
+```{r}
+#correlation plot 
+corrplot(as.matrix(Data_Correlation_Matrix))
+```
+
+
+###Stage 3:
+
+Now We will start feature engineering to reduce the number of features for analysis and combine features to make them meaningful for analysis. 
+The main purpose is to get the ratios and conversion rate for each product type segment and order. 
+```{r}
+#Adding Average order value
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, AOV = revenue/orders )
+
+#Adding average number of items per orders
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, ItemsPerOrder = items/orders)
+
+#Cancellation Percentage
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, CancellationRatio = 100 *cancels/orders)
+
+
+#Adding Return Ratio'
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, ReturnRatio = 100 *returns/orders)
+
+
+#Vouchers Ratio = Vouchers per order
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, VoucherRatio = 100 *vouchers/orders)
+
+#FemaleItemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, FemaleItemsRatio = 100 *female_items/items)
+
+#MaleItemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, MaleItemsRatio = 100 *male_items/items)
+
+#UnisexRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, UnisexItemsRatio = 100 *unisex_items/items)
+
+#wapp_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, WappItemsRatio = 100 *wapp_items/items)
+
+#macc_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, MaccItemsRatio = 100 *macc_items/items)
+
+
+#wftw_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, WftwItemsRatio = 100 *wftw_items/items)
+
+
+#mapp_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, MappItemsRatio = 100 *mapp_items/items)
+
+#wacc_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, WaccItemsRatio = 100 *wacc_items/items)
+
+#mftw_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, MftwItemsRatio = 100 *mftw_items/items)
+
+#wspt_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, WsptItemsRatio = 100 *wspt_items/items)
+
+#mspt_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, MsptItemsRatio = 100 *mspt_items/items)
+
+#curvy_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, CurvyItemsRatio = 100 *curvy_items/items)
+
+
+#saccy_itemsRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, SaccItemsRatio = 100 *sacc_items/items)
+
+
+
+
+#msite_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, MsiteOrdersRatio = 100 *msite_orders/orders)
+
+#desktop_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, DesktopOrdersRatio = 100 *desktop_orders/orders)
+
+#android_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, AndroidOrdersRatio = 100 *android_orders/orders)
+
+#ios_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, IosOrdersRatio = 100 *ios_orders/orders)
+
+#other_device_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, OtherDeviceOrdersRatio = 100 *other_device_orders/orders)
+
+#work_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, WorkOrdersRatio = 100 *work_orders/orders)
+
+#home_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, HomeOrdersRatio = 100 *home_orders/orders)
+
+
+#parcelpoint_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, ParcelPointOrdersRatio = 100 *parcelpoint_orders/orders)
+
+
+#other_collection_ordersRatio
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, OtherCollectionOrdersRatio = 100 *other_collection_orders/orders)
+
+
+#Revenue_Per_Order
+Iconic_Test_Data_Clean <- mutate(Iconic_Test_Data_Clean, RevenuePerOrder = 100 *revenue/orders)
+
+
+```
+
+Now Lets select the features subset. We are selecting the ratio features that we created and the existing features that are not part of any ratio 
+
+```{r}
+
+
+Iconic_Test_Data_Clean <- Iconic_Test_Data_Clean%>% select(customer_id
+                            ,days_since_first_order
+                            ,days_since_last_order
+                            ,FemaleItemsRatio
+                            ,MaleItemsRatio
+                            ,UnisexItemsRatio
+                            ,average_discount_onoffer
+                            ,average_discount_used
+                            ,ItemsPerOrder
+                            ,CancellationRatio
+                            ,ReturnRatio
+                            ,VoucherRatio
+                            ,WappItemsRatio
+                            ,MaccItemsRatio
+                            ,WftwItemsRatio
+                            ,MappItemsRatio
+                            ,WaccItemsRatio
+                            ,MftwItemsRatio
+                            ,WsptItemsRatio
+                            ,MsptItemsRatio
+                            ,CurvyItemsRatio
+                            ,SaccItemsRatio
+                            ,MsiteOrdersRatio
+                            ,DesktopOrdersRatio
+                            ,AndroidOrdersRatio
+                            ,IosOrdersRatio
+                            ,OtherDeviceOrdersRatio
+                            ,WorkOrdersRatio
+                            ,HomeOrdersRatio
+                            ,ParcelPointOrdersRatio
+                            ,OtherCollectionOrdersRatio
+                            ,RevenuePerOrder
+                            
+                            
+                            )
+
+
+```
+
+We need to normalize the data beacuse the days since first order and the days since last order are in higher numerical orders
+this will bias the output 
+```{r}
+#First we will check for any non-numeric value being passed in the Normalize function and remove it.
+
+
+which(apply(Iconic_Test_Data_Clean, 2, var)==0)
+
+Iconic_Test_Data_Clean['OtherDeviceOrdersRatio'] = NULL
+
+Iconic_Test_Data_Clean_Numeric =Iconic_Test_Data_Clean%>%keep(is.numeric)
+summary(Iconic_Test_Data_Clean_Numeric)
+#creating a normalization funtion here
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+dfNorm <- as.data.frame(lapply(Iconic_Test_Data_Clean_Numeric, normalize))
+
+
+```
+
+
+Now we will apply the Principal Component Analysis on the Data to reduce variables 
+
+```{r}
+
+
+pca_Iconic_data<-prcomp(na.omit(dfNorm),center = TRUE,scale. = TRUE)
+#Iconic_Test_Data_Clean['other_device_orders'] = NULL
+summary(pca_Iconic_data)
+
+```
+
+We can see that the 14 components explains almost 80% of the variance in the data. We can select these 14 components to build our model.
+
+
+First lets select and Plot the principal components.
+
+```{r}
+
+
+principle_components <- data.frame(pca_Iconic_data$x[,1:14])
+# Plot the principle components
+plot(principle_components, pch=16, col=rgb(0,0,0,0.5))
+
+
+
+```
+
+Since prinipal component analysis is hard to explain to business users. I will discard this approach and use K-means clustering on normalized data.
+
+
+Now we will apply simple unsupervised learning technique to find the segments. 
+
+I am using K-means  clustering techniques because its very simple to apply and understand. 
+
+First lets try figuring out the number of clusters we need 
+
+```{r}
+
+fviz_nbclust(dfNorm, kmeans, method = "wss")
+fviz_nbclust(dfNorm, kmeans, method = "silhouette")
+
+
+```
+Both plots tells us k=4 is the right number of clusters
+
+Now lets build the clustering analysis for k=2,3,4 clusters
+```{r}
+set.seed(123)
+k2 <- kmeans(na.omit(dfNorm), centers = 2, nstart = 25)
+k3 <- kmeans(na.omit(dfNorm), centers = 3, nstart = 25)
+k4 <- kmeans(na.omit(dfNorm), centers = 4, nstart = 25)
+
+
+# plots to compare
+p2 <- fviz_cluster(k2, geom = "point", data = na.omit(dfNorm))+ ggtitle("k = 2")
+p3 <- fviz_cluster(k3, geom = "point",  data = na.omit(dfNorm)) + ggtitle("k = 3")
+p4 <- fviz_cluster(k4, geom = "point",  data = na.omit(dfNorm)) + ggtitle("k = 4")
+grid.arrange(p2, p3, p4, nrow = 2)
+k2
+#plot(na.omit(dfNorm), k2$cluster)
+```
+
+As you can see apart when we use 3 or 4 cluster we get subcluster for one cluster.That means we are getting deeper clusters. Here we want to predict the gender so I will just go with 2 clusters.
+
+I will insert the k2 cluster results in the **Iconic_Test_Data_Clean** dataframe.
+
+```{r}
+Iconic_Test_Data_Clean_Clusters <- mutate(Iconic_Test_Data_Clean, Cluster = k2$cluster)
+```
+
+Now we have our data labelled with 2 different cluster and by inspecting the data it seems like majority of the customers in bigger cluster are have high FemaleItemRatio and lower MaleItemRatio. This, however, can't be conclusive to infer gender as sometimes its not true and we have other factors that we want to consider to rightly predict the gender. 
+
+
+To do that, we will apply the random forest technique and split our data into test and training set.
+
+``` {r warning=FALSE, message=FALSE}
+#install the randomforest package if its not already installed
+if(!require(randomForest)) install.packages("randomForest",repos ="http://cran.us.r-project.org")
+
+set.seed(123)
+
+#Create the train sample split
+
+train_data <- sample(nrow(Iconic_Test_Data_Clean_Clusters),0.7*nrow(Iconic_Test_Data_Clean_Clusters), replace = FALSE)
+
+
+#Store the Training data in TrainSet
+TrainSet <- Iconic_Test_Data_Clean_Clusters[train_data,]
+
+#Store the Validiation dataset in ValidSet
+ValidSet <- Iconic_Test_Data_Clean_Clusters[-train_data,]
+
+
+#Print the Summary of the train and valid data to see the data split 
+summary(TrainSet)
+summary(ValidSet)
+
+#Convert the Cluster as factor for prediction 
+
+TrainSet$Cluster <- as.character(TrainSet$Cluster)
+TrainSet$Cluster <- as.factor(TrainSet$Cluster)
+
+
+
+ValidSet$Cluster <- as.character(ValidSet$Cluster)
+ValidSet$Cluster <- as.factor(ValidSet$Cluster)
+
+
+#RandomForest Model
+
+
+RandomForest_Model <- randomForest(Cluster ~ 
+                       days_since_first_order
+                       +days_since_last_order
+                       +FemaleItemsRatio
+                       +MaleItemsRatio         
+                       +UnisexItemsRatio
+                       +average_discount_onoffer
+                       +average_discount_used
+                       +ItemsPerOrder
+                       +CancellationRatio
+                       +ReturnRatio
+                       +VoucherRatio
+                       +WappItemsRatio
+                       +MaccItemsRatio
+                       +WftwItemsRatio
+                       +MappItemsRatio
+                       +WaccItemsRatio
+                       +MftwItemsRatio
+                       +WsptItemsRatio
+                       +MsptItemsRatio
+                       +CurvyItemsRatio
+                       +SaccItemsRatio
+                       +MsiteOrdersRatio
+                       +DesktopOrdersRatio
+                       +AndroidOrdersRatio
+                       +IosOrdersRatio
+                       +WorkOrdersRatio
+                       +HomeOrdersRatio
+                       +ParcelPointOrdersRatio
+                       +OtherCollectionOrdersRatio
+                       +RevenuePerOrder, data = TrainSet,importance = TRUE)
+
+
+
+
+RandomForest_Model
+
+
+
+# Predicting on train set to see how our model is preforming on the data we used for builing it
+
+
+predTrain <- predict(RandomForest_Model, TrainSet, type = "class")
+
+
+# Checking classification accuracy
+table(predTrain, TrainSet$Cluster) 
+
+# Predicting on Validation set
+predValid <- predict(RandomForest_Model, ValidSet, type = "class")
+
+
+# Checking classification accuracy
+mean(predValid == ValidSet$Cluster)  
+
+
+table(predValid,ValidSet$Cluster)
+
+# To check importance of different variables
+importance(RandomForest_Model)  
+
+#plot the important variable of RandomForest
+varImpPlot(RandomForest_Model) 
+#Now Lets Plot the Random Forest and Interpert the Gender  
+
+reprtree:::plot.getTree(RandomForest_Model)
+```
+We can see the important variables from importance function and varImpPlot output are:
+FemaleItemsRatio
+MaleItemsRatio
+WappItemsRatio
+MappItemsRatio
+MftwItemsRatio
+WftwItemsRatio
+
+We will now just use thes features to build our model again.
+
+```{r warning=FALSE, message=FALSE}
+
+#RandomForest Model
+
+
+RandomForest_Model2 <- randomForest(Cluster ~ FemaleItemsRatio+MaleItemsRatio+WappItemsRatio
+                       +WftwItemsRatio+MappItemsRatio+MftwItemsRatio
+                       , data = TrainSet,importance = TRUE)
+
+
+
+
+RandomForest_Model2
+
+
+
+# Predicting on train set to see how our model is preforming on the data we used for builing it
+
+
+predTrain <- predict(RandomForest_Model2, TrainSet, type = "class")
+
+
+# Checking classification accuracy
+table(predTrain, TrainSet$Cluster) 
+
+# Predicting on Validation set
+predValid <- predict(RandomForest_Model2, ValidSet, type = "class")
+
+
+# Checking classification accuracy
+mean(predValid == ValidSet$Cluster)  
+
+
+table(predValid,ValidSet$Cluster)
+
+# To check importance of different variables
+importance(RandomForest_Model2)  
+
+#plot the important variable of RandomForest
+varImpPlot(RandomForest_Model2) 
+
+#Now Lets Plot the Random Forest and Interpert the Gender  
+
+reprtree:::plot.getTree(RandomForest_Model2)
+
+
+
+#Create the Technical Explantory Note for the random forest
+#explain_forest(RandomForest_Model, interactions = TRUE, data = TrainSet)
+
+
+```
+
+By using just 6 variables we don't have any impact on our model accuracy and its still 99 percent.
+
+The Tree now is much more easy to understand and explain. Lets have a look at the tree now and try interperting it.
+
+
+If the FemaleItemsRatio is less than 47.54 then its cluster 1.
+
+
+If the FemaleItemsRatio is greater than 47.54 then check MftwItemsRatio if its more than 30 percent then check MaleItemsRatio.
+If MaleItemsratio is Less than 29.17 then its cluster 2 otherwise there are 66 percent chance that its a cluster 1.
+
+Now if MftwItemsRatio is less than 30.85 percent then check MaleItemsRatio if its greater than 47.7 then there are 66 percent chance its cluster 1.
+
+If MaleItemsRatio is less than 47.7 then check MftwItemsRatio. 
+
+If its less than 6.6 then its a cluster 2. If its More than that its more likely be a cluster 2. 
+
+
+As we can see from this inference that most of the time cluster 2 have more female dominant features cluster 2 is female and cluster 1 have more male dominant features cluster 1 is male.
+
+
+
+
